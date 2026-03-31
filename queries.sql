@@ -150,6 +150,18 @@ ORDER BY ec.certification_date DESC;
 
 --Tier 1 — Complex Analytics Queries
 
+-- 1. Identify "at-risk" projects (Allocated hours > 80% of project budget)
+SELECT 
+    p.name AS project_name, 
+    p.budget AS total_capacity,
+    SUM(pa.hours_allocated) AS total_hours_allocated,
+    ROUND((SUM(pa.hours_allocated)::numeric / p.budget) * 100, 2) AS usage_percentage
+FROM projects p
+JOIN project_assignments pa ON p.project_id = pa.project_id
+GROUP BY p.project_id, p.name, p.budget
+HAVING (SUM(pa.hours_allocated)::numeric / p.budget) > 0.8;
+
+-- 2. Cross-department analysis
 SELECT 
     e.name AS employee_name, 
     e.dept_id AS emp_dept, 
@@ -159,3 +171,63 @@ FROM employees e
 JOIN project_assignments pa ON e.emp_id = pa.emp_id
 JOIN projects p ON pa.project_id = p.project_id
 WHERE e.dept_id != p.dept_id;
+
+
+--Tier 2 — Dynamic Reporting with Views and Functions
+CREATE OR REPLACE VIEW department_summary AS
+SELECT 
+    d.name AS department,
+    COUNT(e.emp_id) AS employee_count,
+    SUM(e.salary) AS total_payroll
+FROM departments d
+LEFT JOIN employees e ON d.dept_id = e.dept_id
+GROUP BY d.dept_id, d.name;
+
+-- 2. Materialized View (Project Status)
+
+CREATE MATERIALIZED VIEW project_status_view AS
+SELECT 
+    p.name AS project_name,
+    p.budget,
+    COUNT(pa.emp_id) AS staff_count,
+    SUM(pa.hours_allocated) AS total_hours
+FROM projects p
+LEFT JOIN project_assignments pa ON p.project_id = pa.project_id
+GROUP BY p.project_id, p.name, p.budget;
+
+-- 3. Advanced Function (Returns JSON)
+CREATE OR REPLACE FUNCTION get_dept_stats_json(dept_name_input VARCHAR)
+RETURNS JSON AS $$
+DECLARE
+    result JSON;
+BEGIN
+    SELECT json_build_object(
+        'employee_count', COUNT(DISTINCT e.emp_id),
+        'total_salary', COALESCE(SUM(e.salary), 0),
+        'active_projects', COUNT(DISTINCT pa.project_id)
+    ) INTO result
+    FROM departments d
+    LEFT JOIN employees e ON d.dept_id = e.dept_id
+    LEFT JOIN project_assignments pa ON e.emp_id = pa.emp_id
+    WHERE d.name = dept_name_input;
+
+    RETURN result;
+END;
+$$ LANGUAGE plpgsql;
+
+
+-- ==========================================
+-- Testing Tier 2 Components
+-- ==========================================
+
+-- 1. Test Standard View
+SELECT * FROM department_summary;
+
+-- 2. Test Materialized View
+SELECT * FROM project_status_view;
+
+-- 3. Test JSON Function (Engineering Department)
+SELECT get_dept_stats_json('Engineering');
+
+-- 4. Test JSON Function (Sales Department)
+SELECT get_dept_stats_json('Sales');
