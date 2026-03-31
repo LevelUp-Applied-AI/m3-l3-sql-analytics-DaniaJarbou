@@ -147,3 +147,15 @@ FROM employees e
 JOIN employee_certifications ec ON e.emp_id = ec.emp_id
 JOIN certifications c ON ec.cert_id = c.cert_id
 ORDER BY ec.certification_date DESC;
+
+--Tier 1 — Complex Analytics Queries
+
+SELECT 
+    e.name AS employee_name, 
+    e.dept_id AS emp_dept, 
+    p.name, 
+    p.dept_id AS project_dept
+FROM employees e
+JOIN project_assignments pa ON e.emp_id = pa.emp_id
+JOIN projects p ON pa.project_id = p.project_id
+WHERE e.dept_id != p.dept_id;
