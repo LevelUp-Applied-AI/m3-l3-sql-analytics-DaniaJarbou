@@ -231,3 +231,52 @@ SELECT get_dept_stats_json('Engineering');
 
 -- 4. Test JSON Function (Sales Department)
 SELECT get_dept_stats_json('Sales');
+
+
+-- Tier 3 — Schema Evolution and Migration
+-- 1. Create salary_history table
+CREATE TABLE IF NOT EXISTS salary_history (
+    history_id SERIAL PRIMARY KEY,
+    emp_id INTEGER REFERENCES employees(emp_id),
+    old_salary DECIMAL(12, 2),
+    new_salary DECIMAL(12, 2),
+    change_date DATE NOT NULL,
+    change_reason VARCHAR(255)
+);
+
+-- 2. Seed with realistic historical data (records for some employees)
+INSERT INTO salary_history (emp_id, old_salary, new_salary, change_date, change_reason)
+VALUES 
+(1, 110000.00, 120000.00, '2024-01-10', 'Annual Promotion'),
+(1, 100000.00, 110000.00, '2023-01-10', 'Performance Review'),
+(2, 90000.00, 98000.00, '2024-02-14', 'Market Adjustment'),
+(3, 85000.00, 95000.00, '2023-05-15', 'Senior Role Promotion');
+
+-- Migration Script: Populate from existing employees table
+INSERT INTO salary_history (emp_id, old_salary, new_salary, change_date, change_reason)
+SELECT 
+    emp_id, 
+    0,
+    salary, 
+    CURRENT_DATE, 
+    'Initial migration from employees table'
+FROM employees
+ON CONFLICT DO NOTHING;
+
+-- A. Salary growth rate by department over time
+SELECT 
+    d.name AS department,
+    AVG((sh.new_salary - sh.old_salary) / NULLIF(sh.old_salary, 0) * 100) AS avg_growth_rate
+FROM salary_history sh
+JOIN employees e ON sh.emp_id = e.emp_id
+JOIN departments d ON e.dept_id = d.dept_id
+GROUP BY d.name;
+
+-- B. Employees due for salary review (No change in 12+ months)
+SELECT 
+    e.name, 
+    MAX(sh.change_date) AS last_review_date
+FROM employees e
+JOIN salary_history sh ON e.emp_id = sh.emp_id
+GROUP BY e.emp_id, e.name
+HAVING MAX(sh.change_date) < CURRENT_DATE - INTERVAL '12 months';
