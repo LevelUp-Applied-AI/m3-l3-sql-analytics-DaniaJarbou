@@ -13,34 +13,36 @@ DROP TABLE IF EXISTS departments CASCADE;
 -- Table: departments
 -- ============================================================
 CREATE TABLE departments (
-    department_id   SERIAL PRIMARY KEY,
-    name            VARCHAR(100) NOT NULL UNIQUE,
-    location        VARCHAR(100) NOT NULL
+    dept_id      SERIAL PRIMARY KEY,
+    name         VARCHAR(100) NOT NULL UNIQUE,
+    location     VARCHAR(100) NOT NULL,
+    budget       NUMERIC(12,2) DEFAULT 0 
 );
 
 -- ============================================================
 -- Table: employees
 -- ============================================================
 CREATE TABLE employees (
-    employee_id     SERIAL PRIMARY KEY,
-    first_name      VARCHAR(50)  NOT NULL,
-    last_name       VARCHAR(50)  NOT NULL,
-    email           VARCHAR(150) NOT NULL UNIQUE,
-    title           VARCHAR(100) NOT NULL,
-    salary          NUMERIC(10,2) NOT NULL CHECK (salary > 0),
-    hire_date       DATE         NOT NULL,
-    department_id   INTEGER      NOT NULL REFERENCES departments(department_id)
+    emp_id       SERIAL PRIMARY KEY,
+    name         VARCHAR(100) NOT NULL,
+    email        VARCHAR(150),
+    title        VARCHAR(100) NOT NULL,
+    salary       NUMERIC(10,2) NOT NULL CHECK (salary > 0),
+    hire_date    DATE NOT NULL,
+    dept_id      INTEGER NOT NULL REFERENCES departments(dept_id)
+   
+    
 );
-
 -- ============================================================
 -- Table: projects
 -- ============================================================
 CREATE TABLE projects (
-    project_id      SERIAL PRIMARY KEY,
-    name            VARCHAR(150) NOT NULL,
-    start_date      DATE         NOT NULL,
-    end_date        DATE,
-    budget          NUMERIC(12,2) NOT NULL CHECK (budget >= 0)
+    project_id   SERIAL PRIMARY KEY,
+    name         VARCHAR(150) NOT NULL,
+    dept_id      INTEGER REFERENCES departments(dept_id), -- ربط المشروع بالقسم مطلوب في Q4/Q5
+    start_date   DATE NOT NULL,
+    end_date     DATE,
+    budget       NUMERIC(12,2) NOT NULL CHECK (budget >= 0)
 );
 
 -- ============================================================
@@ -48,8 +50,26 @@ CREATE TABLE projects (
 -- ============================================================
 CREATE TABLE project_assignments (
     assignment_id   SERIAL PRIMARY KEY,
-    employee_id     INTEGER NOT NULL REFERENCES employees(employee_id),
+    emp_id          INTEGER NOT NULL REFERENCES employees(emp_id),
     project_id      INTEGER NOT NULL REFERENCES projects(project_id),
-    role            VARCHAR(100) NOT NULL,
-    hours_allocated INTEGER NOT NULL CHECK (hours_allocated > 0)
+    hours_allocated INTEGER NOT NULL CHECK (hours_allocated > 0),
+    role            VARCHAR(100) NOT NULL
+);
+-- ============================================================
+-- Table: certificationss
+-- ============================================================
+CREATE TABLE IF NOT EXISTS certifications (
+    cert_id      SERIAL PRIMARY KEY,
+    name         VARCHAR(100) NOT NULL,
+    issuing_org  VARCHAR(100),
+    level        VARCHAR(50) 
+);
+-- ============================================================
+-- Table: employee_certifications
+-- ============================================================
+CREATE TABLE IF NOT EXISTS employee_certifications (
+    id                 SERIAL PRIMARY KEY,
+    emp_id             INTEGER REFERENCES employees(emp_id),
+    cert_id            INTEGER REFERENCES certifications(cert_id),
+    certification_date DATE NOT NULL
 );
